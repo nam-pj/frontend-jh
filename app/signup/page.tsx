@@ -2,26 +2,42 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import axios from "axios";
 
 export default function SignUpPage() {
-  const [email, setEmail] = useState("");
+  const [username, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
 
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== passwordCheck) {
-    setError("비밀번호가 일치하지 않습니다.");
-    return;
-  }
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
 
-  setError("");
+    setError("");
 
-    console.log({ email, password });
-    // 👉 회원가입 API 호출 자리
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/user",
+        {
+          username,
+          password,
+        }
+      );
+
+      console.log(response.data);
+
+      alert("회원가입 성공!");
+    } catch (err: any) {
+      console.error(err);
+
+      setError("회원가입 실패");
+    }
   };
 
   return (
@@ -32,49 +48,45 @@ export default function SignUpPage() {
       >
         <h1 className="text-2xl font-bold text-center">회원가입</h1>
 
-        {/* 이메일 */}
         <input
           type="email"
           placeholder="이메일"
-          value={email}
+          value={username}
           onChange={(e) => setEmail(e.target.value)}
-          className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-lg p-3"
           required
         />
 
-        {/* 비밀번호 */}
         <input
           type="password"
           placeholder="비밀번호"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-lg p-3"
           required
         />
 
-        {/* 비밀번호 확인 */}
         <input
           type="password"
           placeholder="비밀번호 확인"
           value={passwordCheck}
           onChange={(e) => setPasswordCheck(e.target.value)}
-          className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-lg p-3"
           required
-          
         />
+
         {error && <p className="text-red-500 text-sm">{error}</p>}
-        {/* 회원가입 버튼 */}
+
         <button
           type="submit"
-          className="bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition"
+          className="bg-green-600 text-white p-3 rounded-lg font-semibold"
         >
           회원가입
         </button>
 
-        {/* 로그인 이동 */}
         <Link
           href="/signin"
-          className="text-center text-sm text-gray-500 hover:text-blue-500"
+          className="text-center text-sm text-gray-500"
         >
           이미 계정이 있나요? 로그인
         </Link>
