@@ -13,7 +13,6 @@ interface Board {
 }
 
 export default function BoardsPage() {
-
   const router = useRouter();
 
   const [boards, setBoards] = useState<Board[]>([]);
@@ -29,36 +28,41 @@ export default function BoardsPage() {
       });
   }, []);
 
-  // 글쓰기 버튼 클릭
   const handleWrite = () => {
-
-    // JWT 토큰 확인
     const token = localStorage.getItem("token");
 
-    // 로그인 안된 상태
     if (!token) {
-
       alert("로그인이 필요한 서비스입니다.");
-
       router.push("/signin");
-
       return;
     }
 
-    // 로그인 된 상태
     router.push("/boards/write");
   };
 
   return (
-    <div className="p-10 max-w-3xl mx-auto">
+    <div className="p-10 max-w-4xl">
 
-      <h1 className="text-3xl font-bold mb-2">
-        게시글 목록
-      </h1>
+      <div className="flex justify-between items-start mb-8">
 
-      <p className="text-gray-600 mb-8">
-        등록된 게시글 페이지
-      </p>
+        <div>
+          <h1 className="text-3xl font-bold mb-2">
+            게시글 목록
+          </h1>
+
+          <p className="text-gray-600">
+            등록된 게시글 페이지
+          </p>
+        </div>
+
+        <button
+          onClick={handleWrite}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-full shadow-lg transition"
+        >
+          게시글 작성
+        </button>
+
+      </div>
 
       <div className="flex flex-col gap-5">
 
@@ -84,17 +88,10 @@ export default function BoardsPage() {
 
             </div>
           </Link>
+
         ))}
 
       </div>
-
-      {/* 글쓰기 버튼 */}
-      <button
-        onClick={handleWrite}
-        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-full shadow-lg transition"
-      >
-        게시글 작성
-      </button>
 
     </div>
   );
