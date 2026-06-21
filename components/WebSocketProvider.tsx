@@ -1,66 +1,94 @@
 "use client";
 
-import { useEffect } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Client, IMessage } from "@stomp/stompjs";
+import { apiFetch } from "@/app/lib/api";
+
+interface DmMessage {
+  id: number;
+  senderUsername: string;
+  receiverUsername: string;
+  content: string;
+  sentAt: string;
+}
+
+interface WebSocketContextValue {
+  connected: boolean;
+  messages: DmMessage[];
+  unreadCount: number;
+  sendDm: (receiverUsername: string, content: string) => void;
+}
+
+const WebSocketContext = createContext<WebSocketContextValue | null>(null);
+
+export function useWebSocket() {
+  const ctx = useContext(WebSocketContext);
+  if (!ctx) {
+    throw new Error("useWebSocket은 WebSocketProvider 내부에서만 사용할 수 있습니다.");
+  }
+  return ctx;
+}
 
 export default function WebSocketProvider({
   children,
+  isLoggedIn,
 }: {
   children: React.ReactNode;
+  isLoggedIn: boolean;
 }) {
 
+  const clientRef = useRef<Client | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [messages, setMessages] = useState<DmMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useEffect(() => {
 
-    const token = localStorage.getItem("token");
+    if (!isLoggedIn) return; // 로그인 안 했으면 아예 연결 시도 안 함
 
-    if (!token) return;
+    apiFetch("/api/dm/unread-count")
+      .then((res) => res.json())
+      .then((count: number) => setUnreadCount(count))
+      .catch((err) => console.error("안 읽은 메시지 개수 조회 실패:", err));
 
-    console.log("웹소켓 연결");
+    const client = new Client({
+      brokerURL: "ws://localhost:8080/ws-stomp",
+      reconnectDelay: 5000,
+      onConnect: () => {
+
+        setConnected(true);
+
+        client.subscribe("/user/queue/dm", (message: IMessage) => {
+          const body: DmMessage = JSON.parse(message.body);
+
+          setMessages((prev) => [...prev, body]);
+          setUnreadCount((prev) => prev + 1);
+        });
+      },
+      onDisconnect: () => {
+        setConnected(false);
+      },
+    });
+
+    client.activate();
+    clientRef.current = client;
 
     return () => {
-      console.log("웹소켓 종료");
+      client.deactivate();
     };
 
-  }, []);
+  }, [isLoggedIn]);
 
-  return <>{children}</>;
+  const sendDm = (receiverUsername: string, content: string) => {
+    clientRef.current?.publish({
+      destination: "/app/dm/send",
+      body: JSON.stringify({ receiverUsername, content }),
+    });
+  };
+
+  return (
+    <WebSocketContext.Provider value={{ connected, messages, unreadCount, sendDm }}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 }
-
-/*
-"use client";
-
-import { useEffect } from "react";
-
-export default function WebSocketProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    // 1. 백엔드 웹소켓 서버에 연결
-    const ws = new WebSocket(`ws://백엔드주소/ws?token=${token}`);
-
-    // 2. 연결 성공
-    ws.onopen = () => {
-      console.log("웹소켓 연결됨");
-    };
-
-    // 3. 백엔드에서 메시지 수신
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("받은 메시지:", data);
-    };
-
-    // 4. 에러
-    ws.onerror = (error) => {
-      console.error("웹소켓 에러:", error);
-    };
-
-    // 5. 연결 종료 (페이지 이탈 시 자동 정리)
-    return () => {
-      ws.close();
-      console.log("웹소켓 종료");
-    };
-  }, []);
-
-  return <>{children}</>;
-}
-  */
