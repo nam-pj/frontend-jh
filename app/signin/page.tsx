@@ -30,6 +30,7 @@ export default function SignInPage() {
       // localStorage 저장
       localStorage.setItem("token", token);
       localStorage.setItem("userId", userId);
+      localStorage.setItem("username", username);
 
       alert("로그인 성공");
 
