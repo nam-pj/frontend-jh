@@ -46,11 +46,17 @@ export default function WebSocketProvider({
 
     if (!isLoggedIn) return; // 로그인 안 했으면 아예 연결 시도 안 함
 
-    apiFetch("/api/dm/unread-count")
-      .then((res) => res.json())
-      .then((count: number) => setUnreadCount(count))
-      .catch((err) => console.error("안 읽은 메시지 개수 조회 실패:", err));
+    const fetchUnreadCount = async () => {
+  try {
+    const res = await apiFetch("/api/dm/unread-count");
+    const count: number = await res.json();
+    setUnreadCount(count);
+  } catch (err: unknown) {
+    console.error("안 읽은 메시지 개수 조회 실패:", err);
+  }
+};
 
+fetchUnreadCount();
     const client = new Client({
       brokerURL: "ws://localhost:8080/ws-stomp",
       reconnectDelay: 5000,
