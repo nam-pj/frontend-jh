@@ -19,6 +19,15 @@ interface WebSocketContextValue {
   sendDm: (receiverUsername: string, content: string) => void;
 }
 
+interface WebSocketContextValue {
+  connected: boolean;
+  messages: DmMessage[];
+  unreadCount: number;
+  sendDm: (receiverUsername: string, content: string) => void;
+  resetUnread: () => void; // 추가
+}
+
+
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 export function useWebSocket() {
@@ -32,16 +41,18 @@ export function useWebSocket() {
 export default function WebSocketProvider({
   children,
   isLoggedIn,
+  myUsername,
 }: {
   children: React.ReactNode;
   isLoggedIn: boolean;
+  myUsername: string;
 }) {
 
   const clientRef = useRef<Client | null>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-
+  const resetUnread = () => setUnreadCount(0);
   useEffect(() => {
 
     if (!isLoggedIn) return; // 로그인 안 했으면 아예 연결 시도 안 함
@@ -68,7 +79,9 @@ fetchUnreadCount();
           const body: DmMessage = JSON.parse(message.body);
 
           setMessages((prev) => [...prev, body]);
+          if (body.senderUsername !== myUsername) {
           setUnreadCount((prev) => prev + 1);
+        }
         });
       },
       onDisconnect: () => {
@@ -93,8 +106,8 @@ fetchUnreadCount();
   };
 
   return (
-    <WebSocketContext.Provider value={{ connected, messages, unreadCount, sendDm }}>
-      {children}
-    </WebSocketContext.Provider>
-  );
+  <WebSocketContext.Provider value={{ connected, messages, unreadCount, sendDm, resetUnread }}>
+    {children}
+  </WebSocketContext.Provider>
+);
 }

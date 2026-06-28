@@ -36,8 +36,10 @@ export default function ChatWindow() {
   const [searchError, setSearchError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { messages: liveMessages, sendDm } = useWebSocket();
+  const { messages: liveMessages, sendDm, resetUnread } = useWebSocket();
 
+
+  
   // 팔로잉 목록 불러오기
   useEffect(() => {
     if (activeTab !== "friends") return;
@@ -74,28 +76,41 @@ export default function ChatWindow() {
 
   // 채팅방 진입 시 과거 내역 불러오기
   useEffect(() => {
-    if (!selectedUser) return;
+  if (!selectedUser) return;
 
-    const fetchHistory = async () => {
-      try {
-        const res = await apiFetch(`/api/dm/${selectedUser}`);
-        const data: DmMessage[] = await res.json();
-        setHistory(data);
-      } catch (err: unknown) {
-        console.error("대화 내역 조회 실패:", err);
-      }
-    };
+  const fetchHistory = async () => {
+    try {
+      const res = await apiFetch(`/api/dm/${selectedUser}`);
+      const data: DmMessage[] = await res.json();
+      setHistory(data);
+    } catch (err: unknown) {
+      console.error("대화 내역 조회 실패:", err);
+    }
+  };
 
-    fetchHistory();
-  }, [selectedUser]);
+  // 읽음 처리
+  const markAsRead = async () => {
+    try {
+      await apiFetch(`/api/dm/${selectedUser}/read`, { method: "PATCH" });
+      resetUnread(); // 뱃지 초기화
+    } catch (err: unknown) {
+      console.error("읽음 처리 실패:", err);
+    }
+  };
+
+  fetchHistory();
+  markAsRead();
+}, [selectedUser]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, liveMessages]);
-
+  const historyIds = new Set(history.map((m) => m.id));
   const relevantLiveMessages = liveMessages.filter(
-    (m) => m.senderUsername === selectedUser || m.receiverUsername === selectedUser
-  );
+  (m) =>
+    (m.senderUsername === selectedUser || m.receiverUsername === selectedUser) &&
+    !historyIds.has(m.id)
+);
 
   const allMessages = [...history, ...relevantLiveMessages];
 
@@ -225,13 +240,13 @@ export default function ChatWindow() {
       <div style={{ display: "flex", padding: "10px", borderBottom: "1px solid #eee", background: "#fafafa", borderRadius: "12px 12px 0 0" }}>
         <button
           onClick={() => setActiveTab("friends")}
-          style={{ flex: 1, border: "none", borderBottom: activeTab === "friends" ? "3px solid #1877F2" : "3px solid transparent", background: "none", cursor: "pointer", padding: "10px", fontWeight: activeTab === "friends" ? "bold" : "normal", color: activeTab === "friends" ? "#1877F2" : "#666" }}
+          style={{ flex: 1, borderTop: "none",borderLeft: "none",borderRight: "none", borderBottom: activeTab === "friends" ? "3px solid #1877F2" : "3px solid transparent", background: "none", cursor: "pointer", padding: "10px", fontWeight: activeTab === "friends" ? "bold" : "normal", color: activeTab === "friends" ? "#1877F2" : "#666" }}
         >
           친구
         </button>
         <button
           onClick={() => setActiveTab("dm")}
-          style={{ flex: 1, border: "none", borderBottom: activeTab === "dm" ? "3px solid #1877F2" : "3px solid transparent", background: "none", cursor: "pointer", padding: "10px", fontWeight: activeTab === "dm" ? "bold" : "normal", color: activeTab === "dm" ? "#1877F2" : "#666" }}
+          style={{ flex: 1,  borderTop: "none",borderLeft: "none",borderRight: "none", borderBottom: activeTab === "dm" ? "3px solid #1877F2" : "3px solid transparent", background: "none", cursor: "pointer", padding: "10px", fontWeight: activeTab === "dm" ? "bold" : "normal", color: activeTab === "dm" ? "#1877F2" : "#666" }}
         >
           DM
         </button>
@@ -245,12 +260,12 @@ export default function ChatWindow() {
           <div style={{ padding: "12px", borderBottom: "1px solid #eee" }}>
             <div style={{ display: "flex", gap: "8px" }}>
              <input
-  value={searchUsername}
-  onChange={(e) => { setSearchUsername(e.target.value); setSearchResult(null); setSearchError(""); }}
-  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-  placeholder="username으로 검색"
-  style={{ flex: 1, padding: "8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
-/>
+            value={searchUsername}
+            onChange={(e) => { setSearchUsername(e.target.value); setSearchResult(null); setSearchError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="username으로 검색"
+            style={{ flex: 1, padding: "8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "13px" }}
+          />
               <button
                 onClick={handleSearch}
                 style={{ background: "#1877F2", color: "white", border: "none", padding: "8px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "13px" }}

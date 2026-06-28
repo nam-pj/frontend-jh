@@ -14,12 +14,12 @@ export default async function RootLayout({
 
   const cookieStore = await cookies();
   const isLoggedIn = !!cookieStore.get("token")?.value;
-
+  const myUsername = cookieStore.get("username")?.value ?? "";
   return (
     <html lang="ko">
       <body className="bg-white text-black min-h-screen">
 
-        <WebSocketProvider isLoggedIn={isLoggedIn}>
+        <WebSocketProvider isLoggedIn={isLoggedIn} myUsername={myUsername}>
 
           <Header />
 
