@@ -4,11 +4,13 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { apiFetch } from "@/app/lib/api";
 
-interface DmMessage {
+export interface DmMessage {
   id: number;
   senderUsername: string;
   receiverUsername: string;
   content: string;
+  type: "TALK" | "GAME_INVITE" | "GAME_ACCEPT" | "GAME_DECLINE";
+  roomId?: string;
   sentAt: string;
 }
 
@@ -16,25 +18,16 @@ interface WebSocketContextValue {
   connected: boolean;
   messages: DmMessage[];
   unreadCount: number;
-  sendDm: (receiverUsername: string, content: string) => void;
+  myUsername: string; // 추가
+  sendDm: (receiverUsername: string, content: string, type?: DmMessage["type"], roomId?: string) => void;
+  resetUnread: () => void;
 }
-
-interface WebSocketContextValue {
-  connected: boolean;
-  messages: DmMessage[];
-  unreadCount: number;
-  sendDm: (receiverUsername: string, content: string) => void;
-  resetUnread: () => void; // 추가
-}
-
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 export function useWebSocket() {
   const ctx = useContext(WebSocketContext);
-  if (!ctx) {
-    throw new Error("useWebSocket은 WebSocketProvider 내부에서만 사용할 수 있습니다.");
-  }
+  if (!ctx) throw new Error("useWebSocket은 WebSocketProvider 내부에서만 사용할 수 있습니다.");
   return ctx;
 }
 
@@ -47,66 +40,67 @@ export default function WebSocketProvider({
   isLoggedIn: boolean;
   myUsername: string;
 }) {
-
   const clientRef = useRef<Client | null>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const resetUnread = () => setUnreadCount(0);
-  useEffect(() => {
 
-    if (!isLoggedIn) return; // 로그인 안 했으면 아예 연결 시도 안 함
+  useEffect(() => {
+    if (!isLoggedIn) return;
 
     const fetchUnreadCount = async () => {
-  try {
-    const res = await apiFetch("/api/dm/unread-count");
-    const count: number = await res.json();
-    setUnreadCount(count);
-  } catch (err: unknown) {
-    console.error("안 읽은 메시지 개수 조회 실패:", err);
-  }
-};
+      try {
+        const res = await apiFetch("/api/dm/unread-count");
+        const count: number = await res.json();
+        setUnreadCount(count);
+      } catch (err: unknown) {
+        console.error("안 읽은 메시지 개수 조회 실패:", err);
+      }
+    };
 
-fetchUnreadCount();
+    fetchUnreadCount();
+
     const client = new Client({
       brokerURL: "ws://localhost:8080/ws-stomp",
       reconnectDelay: 5000,
       onConnect: () => {
-
         setConnected(true);
 
         client.subscribe("/user/queue/dm", (message: IMessage) => {
           const body: DmMessage = JSON.parse(message.body);
-
           setMessages((prev) => [...prev, body]);
+
+          // 내가 보낸 메시지 echo는 카운트 제외
           if (body.senderUsername !== myUsername) {
-          setUnreadCount((prev) => prev + 1);
-        }
+            setUnreadCount((prev) => prev + 1);
+          }
         });
       },
-      onDisconnect: () => {
-        setConnected(false);
-      },
+      onDisconnect: () => setConnected(false),
     });
 
     client.activate();
     clientRef.current = client;
 
-    return () => {
-      client.deactivate();
-    };
+    return () => { client.deactivate(); };
+  }, [isLoggedIn, myUsername]);
 
-  }, [isLoggedIn]);
-
-  const sendDm = (receiverUsername: string, content: string) => {
+  const sendDm = (
+    receiverUsername: string,
+    content: string,
+    type: DmMessage["type"] = "TALK",
+    roomId?: string
+  ) => {
     clientRef.current?.publish({
       destination: "/app/dm/send",
-      body: JSON.stringify({ receiverUsername, content }),
+      body: JSON.stringify({ receiverUsername, content, type, roomId }),
     });
   };
 
+  const resetUnread = () => setUnreadCount(0);
+
   return (
-  <WebSocketContext.Provider value={{ connected, messages, unreadCount, sendDm, resetUnread }}>
+  <WebSocketContext.Provider value={{ connected, messages, unreadCount, myUsername, sendDm, resetUnread }}>
     {children}
   </WebSocketContext.Provider>
 );
