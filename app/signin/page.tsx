@@ -1,6 +1,5 @@
 "use client";
 
-import axios from "axios";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,22 +14,18 @@ export default function SignInPage() {
 
     try {
 
-      const response = await axios.post(
-        "http://localhost:8080/user/login",
-        {
-          username,
-          password,
-        }
-      );
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-      // 응답 데이터
-      const token = response.data.token;
-      const userId = response.data.userId;
-
-      // localStorage 저장
-      localStorage.setItem("token", token);
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("username", username);
+      if (!response.ok) {
+        alert("로그인 실패");
+        return;
+      }
 
       alert("로그인 성공");
 

@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ChatWindow from "./ChatWindow";
+import { useWebSocket } from "./WebSocketProvider";
 
 export default function ChatWidget() {
+
   const [open, setOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token"); // 실제 키 이름으로 바꿔줘
-    setIsLoggedIn(!!token);
-  }, []);
-
-  if (!isLoggedIn) return null;
+  const { unreadCount } = useWebSocket();
 
   return (
     <>
@@ -38,6 +33,29 @@ export default function ChatWidget() {
       >
         💬
       </button>
+
+      {unreadCount > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "72px",
+            right: "18px",
+            width: "24px",
+            height: "24px",
+            borderRadius: "50%",
+            background: "red",
+            color: "white",
+            fontSize: "12px",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100000,
+          }}
+        >
+          {unreadCount}
+        </div>
+      )}
     </>
   );
 }

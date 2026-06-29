@@ -1,38 +1,14 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { cookies } from "next/headers";
+import LogoutButton from "./LogoutButton";
 
-export default function Header() {
+export default async function Header() {
 
-  const [isLogin, setIsLogin] = useState(false);
-  const [userId, setUserId] = useState("");
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+  const username = cookieStore.get("username")?.value;
 
-  useEffect(() => {
-
-    const token = localStorage.getItem("token");
-    const storedUserId = localStorage.getItem("userId");
-
-    if (token) {
-      setIsLogin(true);
-    }
-
-    if (storedUserId) {
-      setUserId(storedUserId);
-    }
-
-  }, []);
-
-  const handleLogout = () => {
-
-    // 저장 데이터 제거
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-
-    alert("로그아웃 되었습니다.");
-
-    window.location.href = "/";
-  };
+  const isLogin = !!token;
 
   return (
     <header className="flex items-center justify-between p-5 border-b border-gray-200">
@@ -61,19 +37,14 @@ export default function Header() {
 
             {/* 마이페이지 */}
             <Link
-              href={`/mypage/${userId}`}
+              href={`/mypage/${username}`}
               className="hover:text-blue-500 transition-colors"
             >
               마이페이지
             </Link>
 
             {/* 로그아웃 */}
-            <button
-              onClick={handleLogout}
-              className="hover:text-red-500 transition-colors"
-            >
-              로그아웃
-            </button>
+            <LogoutButton />
 
           </>
         ) : (
