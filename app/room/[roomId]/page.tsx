@@ -120,11 +120,27 @@ export default function WordChainPage() {
 
         client.send("/app/room.join", {}, JSON.stringify({ roomId }));
 
-        fetch(`${BACKEND_HTTP_URL}/api/rooms/${roomId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(r => r.json()).then(data => {
-          setIsHost(data.hostUsername === localStorage.getItem("username"));
-        });
+       // 1. 주소를 Next.js 내부 API(/api/rooms/...)로 변경합니다. (헤더 토큰 생략 가능)
+fetch(`/api/rooms/${roomId}`, {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json",
+  },
+})
+.then(async (r) => {
+  // 2. 💡 강제로 json()을 호출하기 전에, 서버 응답이 성공(200번대)인지 먼저 확인합니다.
+  if (!r.ok) {
+    throw new Error(`방 정보 조회 실패 (상태 코드: ${r.status})`);
+  }
+  return r.json();
+})
+.then(data => {
+  setIsHost(data.hostUsername === localStorage.getItem("username"));
+})
+.catch(err => {
+  // 3. 에러가 발생해도 화면이 하얗게 튕기지 않도록 콘솔에만 출력합니다.
+  console.error("방 정보 로딩 에러:", err);
+});
       });
 
       stompClientRef.current = client;
