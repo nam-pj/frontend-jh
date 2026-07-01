@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { apiFetch } from "@/app/lib/api";
 
 export interface DmMessage {
@@ -18,7 +19,7 @@ interface WebSocketContextValue {
   connected: boolean;
   messages: DmMessage[];
   unreadCount: number;
-  myUsername: string; // 추가
+  myUsername: string;
   sendDm: (receiverUsername: string, content: string, type?: DmMessage["type"], roomId?: string) => void;
   resetUnread: () => void;
 }
@@ -61,7 +62,9 @@ export default function WebSocketProvider({
     fetchUnreadCount();
 
     const client = new Client({
-      brokerURL: "ws://localhost:8080/ws-stomp",
+      // brokerURL 제거, SockJS 사용
+      webSocketFactory: () =>
+        new SockJS("http://localhost:8080/ws-stomp") as any,
       reconnectDelay: 5000,
       onConnect: () => {
         setConnected(true);
@@ -70,7 +73,6 @@ export default function WebSocketProvider({
           const body: DmMessage = JSON.parse(message.body);
           setMessages((prev) => [...prev, body]);
 
-          // 내가 보낸 메시지 echo는 카운트 제외
           if (body.senderUsername !== myUsername) {
             setUnreadCount((prev) => prev + 1);
           }
@@ -100,8 +102,8 @@ export default function WebSocketProvider({
   const resetUnread = () => setUnreadCount(0);
 
   return (
-  <WebSocketContext.Provider value={{ connected, messages, unreadCount, myUsername, sendDm, resetUnread }}>
-    {children}
-  </WebSocketContext.Provider>
-);
+    <WebSocketContext.Provider value={{ connected, messages, unreadCount, myUsername, sendDm, resetUnread }}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 }
